@@ -51,6 +51,9 @@ import static org.apache.dubbo.remoting.Constants.CHECK_KEY;
 
 /**
  * RegistryDirectory
+ * 进行服务发现的组件
+ * 1.主动向ZK查询目标服务实例的集群地址
+ * 2.向ZK中订阅目标服务实例的信息，在发生变化时ZK主动推送变化信息，由当前组件进行动态更新与维护
  */
 public abstract class DynamicDirectory<T> extends AbstractDirectory<T> implements NotifyListener {
 

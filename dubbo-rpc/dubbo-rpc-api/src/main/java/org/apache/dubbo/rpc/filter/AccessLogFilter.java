@@ -149,6 +149,7 @@ public class AccessLogFilter implements Filter {
             for (Map.Entry<String, Set<AccessLogData>> entry : logEntries.entrySet()) {
                 String accessLog = entry.getKey();
                 Set<AccessLogData> logSet = entry.getValue();
+                // 将访问日志写入磁盘文件
                 writeLogSetToFile(accessLog, logSet);
             }
         }

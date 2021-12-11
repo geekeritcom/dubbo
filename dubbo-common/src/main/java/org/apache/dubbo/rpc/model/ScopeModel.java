@@ -62,15 +62,32 @@ public abstract class ScopeModel implements ExtensionAccessor {
 
     private Set<ClassLoader> classLoaders;
 
+    /**
+     * model组件体系中的父类
+     */
     private final ScopeModel parent;
+    /**
+     * 表示SPI机制使用的范围，决定了创建的extension实例能否跟其他model组件共享使用
+     */
     private final ExtensionScope scope;
 
+    /**
+     * 本质上就是一个extension loader的管理组件
+     * 针对某个接口来加载其对应的SPI扩展实例，就必须先通过ExtensionDirector获取到那个接口对应的ExtensionLoader组件
+     * 最终通过ExtensionLoader组件来获取扩展实例
+     */
     private ExtensionDirector extensionDirector;
 
     private ScopeBeanFactory beanFactory;
+    /**
+     * model组件被销毁时的生命周期监听器
+     */
     private List<ScopeModelDestroyListener> destroyListeners;
 
     private Map<String, Object> attributes;
+    /**
+     * 标识当前scope组件是否已被销毁
+     */
     private final AtomicBoolean destroyed = new AtomicBoolean(false);
 
     public ScopeModel(ScopeModel parent, ExtensionScope scope) {

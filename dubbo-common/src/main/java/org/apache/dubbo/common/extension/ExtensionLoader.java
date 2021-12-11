@@ -104,6 +104,9 @@ public class ExtensionLoader<T> {
 
     private final Class<?> type;
 
+    /**
+     * 扩展实例注入器
+     */
     private final ExtensionInjector injector;
 
     private final ConcurrentMap<Class<?>, String> cachedNames = new ConcurrentHashMap<>();
@@ -123,6 +126,7 @@ public class ExtensionLoader<T> {
 
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<>();
 
+    // 基于JDK提供的SPI机制来加载所有的SPI加载策略
     private static volatile LoadingStrategy[] strategies = loadLoadingStrategies();
 
     /**
@@ -166,6 +170,7 @@ public class ExtensionLoader<T> {
         return asList(strategies);
     }
 
+    // 负责加载实现类的接口class，负责管理ExtensionDirector
     ExtensionLoader(Class<?> type, ExtensionDirector extensionDirector, ScopeModel scopeModel) {
         this.type = type;
         this.extensionDirector = extensionDirector;
@@ -508,12 +513,15 @@ public class ExtensionLoader<T> {
         if (!wrap) {
             cacheKey += "_origin";
         }
+        // 基于缓存key创建Holder容器
         final Holder<Object> holder = getOrCreateHolder(cacheKey);
         Object instance = holder.get();
         if (instance == null) {
+            // 针对SPI extension实例对应的holder进行加锁，达到细粒度加锁的目的
             synchronized (holder) {
                 instance = holder.get();
                 if (instance == null) {
+                    // 创建SPI对应的extension
                     instance = createExtension(name, wrap);
                     holder.set(instance);
                 }
@@ -661,6 +669,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
+        // 针对@Adptive注解的SPI扩展机制，当接口包含多个实现类的时候，可以根据url中的参数来定位对应的实现类
         Object instance = cachedAdaptiveInstance.get();
         if (instance == null) {
             if (createAdaptiveInstanceError != null) {
@@ -712,20 +721,28 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name, boolean wrap) {
+        // 根据接口名称从已加载的实现类中获取具体的实现类
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null || unacceptableExceptions.contains(name)) {
             throw findException(name);
         }
         try {
+            //
             T instance = (T) extensionInstances.get(clazz);
             if (instance == null) {
+                // 构造实现类的对象进行缓存
+                // 核心就是通过反射技术来获取对应实现类的对象实例
                 extensionInstances.putIfAbsent(clazz, createExtensionInstance(clazz));
                 instance = (T) extensionInstances.get(clazz);
+                // 执行实例初始化之前的前置处理
                 instance = postProcessBeforeInitialization(instance, name);
+                // 执行依赖注入
                 injectExtension(instance);
+                // 执行实例初始化的后置处理
                 instance = postProcessAfterInitialization(instance, name);
             }
 
+            // 进行实例包装
             if (wrap) {
                 List<Class<?>> wrapperClassesList = new ArrayList<>();
                 if (cachedWrapperClasses != null) {
@@ -808,8 +825,11 @@ public class ExtensionLoader<T> {
 
                 try {
                     String property = getSetterProperty(method);
+                    // 如果需要注入的对象是其他的SPI机制的实现类
+                    // 此处可以直接从容器里获取后注入
                     Object object = injector.getInstance(pt, property);
                     if (object != null) {
+                        // 调用当前实例的目标setter方法完成依赖注入
                         method.invoke(instance, object);
                     }
                 } catch (Exception e) {
@@ -888,6 +908,7 @@ public class ExtensionLoader<T> {
         Map<String, Class<?>> extensionClasses = new HashMap<>();
 
         for (LoadingStrategy strategy : strategies) {
+            // 读取指定目录下接口的配置文件，解析配置文件读取出每个实现类的短名称和class类型
             loadDirectory(extensionClasses, strategy, type.getName());
 
             // compatible with old ExtensionFactory
@@ -911,6 +932,7 @@ public class ExtensionLoader<T> {
      * extract and cache default extension name if exists
      */
     private void cacheDefaultExtensionName() {
+        // 拿到对应接口上标注的SPI注解
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation == null) {
             return;
@@ -981,6 +1003,17 @@ public class ExtensionLoader<T> {
         }
     }
 
+    /**
+     * 基于配置文件直接进行IO读取，加载指定的extension class
+     * 并且处理@Adaptive等注解
+     *
+     * @param extensionClasses
+     * @param classLoader
+     * @param resourceURL
+     * @param overridden
+     * @param excludedPackages
+     * @param onlyExtensionClassLoaderPackages
+     */
     private void loadResource(Map<String, Class<?>> extensionClasses, ClassLoader classLoader,
                               java.net.URL resourceURL, boolean overridden, String[] excludedPackages, String[] onlyExtensionClassLoaderPackages) {
         try {
@@ -1051,6 +1084,7 @@ public class ExtensionLoader<T> {
                 type + ", class line: " + clazz.getName() + "), class "
                 + clazz.getName() + " is not subtype of interface.");
         }
+        // 基于@Adaptive注解缓存自适应类
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
         } else if (isWrapperClass(clazz)) {

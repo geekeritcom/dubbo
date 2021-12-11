@@ -32,23 +32,41 @@ import java.util.Set;
 
 /**
  * Model of a service module
+ * 类似于门面模式，封装了服务模块相关的其他组件信息
  */
 public class ModuleModel extends ScopeModel {
     private static final Logger logger = LoggerFactory.getLogger(ModuleModel.class);
 
     public static final String NAME = "ModuleModel";
 
+    //
     private final ApplicationModel applicationModel;
+    // 封装配置信息
     private ModuleEnvironment moduleEnvironment;
+    /**
+     * 服务仓储组件，存储服务的相关数据
+     */
     private ModuleServiceRepository serviceRepository;
+    /**
+     * 各个服务的配置数据
+     */
     private ModuleConfigManager moduleConfigManager;
+    /**
+     * 管理其他模块的生命周期
+     */
     private ModuleDeployer deployer;
 
     public ModuleModel(ApplicationModel applicationModel) {
         this(applicationModel, false);
     }
 
+    /**
+     * 构造ModuleModel实例，实际上内部是将ApplicationModel作为父组件
+     * @param applicationModel
+     * @param isInternal
+     */
     public ModuleModel(ApplicationModel applicationModel, boolean isInternal) {
+        // 指定好extension的范围
         super(applicationModel, ExtensionScope.MODULE);
         Assert.notNull(applicationModel, "ApplicationModel can not be null");
         this.applicationModel = applicationModel;
@@ -78,7 +96,9 @@ public class ModuleModel extends ScopeModel {
 
         initModuleExt();
 
+        // 基于SPI机制来获取ScopeModelInitializer接口的extension loader
         ExtensionLoader<ScopeModelInitializer> initializerExtensionLoader = this.getExtensionLoader(ScopeModelInitializer.class);
+        // 通过SPI机制基于ExtensionLoader来获取ScopeModelInitializer接口对应的实现类的所有实例
         Set<ScopeModelInitializer> initializers = initializerExtensionLoader.getSupportedExtensionInstances();
         for (ScopeModelInitializer initializer : initializers) {
             initializer.initializeModuleModel(this);

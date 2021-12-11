@@ -196,6 +196,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             ExtensionLoader<ServiceListener> extensionLoader = this.getExtensionLoader(ServiceListener.class);
             this.serviceListeners.addAll(extensionLoader.getSupportedExtensionInstances());
         }
+        // 初始化service metadata
         initServiceMetadata(provider);
         serviceMetadata.setServiceType(getInterfaceClass());
         serviceMetadata.setTarget(getRef());
@@ -209,6 +210,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
         }
 
         // ensure start module, compatible with old api usage
+        // 对服务实例的启动做准备工作
         getScopeModel().getDeployer().start();
 
         synchronized (this) {
@@ -217,14 +219,28 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
             }
 
             if (!this.isRefreshed()) {
+                // 执行服务实例的刷新
                 this.refresh();
             }
             if (this.shouldExport()) {
+                // 初始化服务实例信息
                 this.init();
 
                 if (shouldDelay()) {
+                    // 延迟发布
                     doDelayExport();
                 } else {
+                    // 核心服务对外发布流程
+                    // 这里可以基于启动日志分析启动过程的大致流程，之后基于流程思考问题
+                    /*
+                    * 1.Export dubbo service,发布dubbo服务实例
+                    * 2.Register dubbo service，向ZK注册服务实例
+                    * 3.启动NettyServer网络连接监听与请求处理
+                    * 4.服务发现注册相关工作
+                    * 5.MetadataReport上报元数据
+                    *
+                    *
+                    * */
                     doExport();
                 }
             }
@@ -357,8 +373,11 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // ModuleServiceRepository属于dubbo服务数据的存储组件，内部存储了包含服务实例的信息以及服务提供者、消费者等信息
         ModuleServiceRepository repository = getScopeModel().getServiceRepository();
+        // 将当前需要发布的服务注册到服务存储组件中
         ServiceDescriptor serviceDescriptor = repository.registerService(getInterfaceClass());
+        // 服务提供者
         providerModel = new ProviderModel(getUniqueServiceName(),
             ref,
             serviceDescriptor,
@@ -368,6 +387,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
         repository.registerProvider(providerModel);
 
+        // 通过配置加载注册中心地址
         List<URL> registryURLs = ConfigValidationUtils.loadRegistries(this, true);
 
         for (ProtocolConfig protocolConfig : protocols) {
@@ -376,6 +396,7 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
                     .orElse(path), group, version);
             // In case user specified path, register service one more time to map it to path.
             repository.registerService(pathKey, interfaceClass);
+            // 执行核心发布流程
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
@@ -555,11 +576,13 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 本地服务实例发布
                 exportLocal(url);
             }
 
             // export to remote if the config is not local (export to local only when config is local)
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
+                // 执行远程发布
                 url = exportRemote(url, registryURLs);
                 MetadataUtils.publishServiceDefinition(url);
             }
@@ -622,10 +645,16 @@ public class ServiceConfig<T> extends ServiceConfigBase<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrl(URL url, boolean withMetaData) {
-        Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
+        // Dubbo底层通过NettyServer监听到网络连接处理请求时，需要由对应的调用组件处理请求
+        // Invoker在这里充当的就是调用组件的角色，这里的Invoker实例实际上就是通过ProxyFactory基于我们的接口生成的动态代理
+        // 当动态代理被调用时，底层回调内部的真正实现类完成请求处理
+         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
         if (withMetaData) {
             invoker = new DelegateProviderMetaDataInvoker(invoker, this);
         }
+        // 这里dubbo内部实际上在进行本地发布以及远程发布的时候
+        // 是通过不同的protocol来完成的，最终也会获取到不同发布方式对应的服务实例的Exporter实例
+        // 调试源码时无法确定是通过哪个具体的protocol执行的发布，可以通过查看该发布方法的返回值进行推断
         Exporter<?> exporter = protocolSPI.export(invoker);
         exporters.add(exporter);
     }

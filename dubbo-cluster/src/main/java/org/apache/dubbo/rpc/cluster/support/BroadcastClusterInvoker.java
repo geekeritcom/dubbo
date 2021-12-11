@@ -64,6 +64,7 @@ public class BroadcastClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
         int failThresholdIndex = invokers.size() * broadcastFailPercent / MAX_BROADCAST_FAIL_PERCENT;
         int failIndex = 0;
+        // 广播调用
         for (Invoker<T> invoker : invokers) {
             try {
                 result = invokeWithContext(invoker, invocation);
@@ -73,6 +74,7 @@ public class BroadcastClusterInvoker<T> extends AbstractClusterInvoker<T> {
                         exception = getRpcException(result.getException());
                         logger.warn(exception.getMessage(), exception);
                         failIndex++;
+                        // 调用失败次数超出阈值后不再广播
                         if (failIndex == failThresholdIndex) {
                             break;
                         }

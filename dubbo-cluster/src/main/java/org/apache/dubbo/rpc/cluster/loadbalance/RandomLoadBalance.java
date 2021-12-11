@@ -52,8 +52,10 @@ public class RandomLoadBalance extends AbstractLoadBalance {
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         // Number of invokers
+        // 获取目标服务实例集群的数量
         int length = invokers.size();
 
+        // 不需要基于权重选择服务实例时，直接随机选择一个服务实例即可
         if (!needWeightLoadBalance(invokers,invocation)){
             return invokers.get(ThreadLocalRandom.current().nextInt(length));
         }
@@ -79,6 +81,7 @@ public class RandomLoadBalance extends AbstractLoadBalance {
             int offset = ThreadLocalRandom.current().nextInt(totalWeight);
             // Return a invoker based on the random value.
             for (int i = 0; i < length; i++) {
+                // 选出权重最大的Invoker
                 if (offset < weights[i]) {
                     return invokers.get(i);
                 }

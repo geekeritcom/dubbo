@@ -38,16 +38,20 @@ import java.util.stream.Collectors;
 
 /**
  * A bean factory for internal sharing.
+ *
+ * dubbo框架内部实现的bean工厂，内部管理的bean在框架内部共享
  */
 public class ScopeBeanFactory {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ScopeBeanFactory.class);
 
     private final ScopeBeanFactory parent;
+    // extension实例的获取组件
     private ExtensionAccessor extensionAccessor;
     private List<ExtensionPostProcessor> extensionPostProcessors;
     private Map<Class, AtomicInteger> beanNameIdCounterMap = new ConcurrentHashMap<>();
     private List<BeanInfo> registeredBeanInfos = Collections.synchronizedList(new ArrayList<>());
+    // 初始化策略
     private InstantiationStrategy instantiationStrategy;
 
     public ScopeBeanFactory(ScopeBeanFactory parent, ExtensionAccessor extensionAccessor) {

@@ -271,6 +271,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
         consumerModel.setProxyObject(ref);
         consumerModel.initMethodModels();
 
+        // 确认目标服务实例是否可用
         checkInvokerAvailable();
     }
 
@@ -374,6 +375,7 @@ public class ReferenceConfig<T> extends ReferenceConfigBase<T> {
                     aggregateUrlFromRegistry(referenceParameters);
                 }
             }
+            // 创建调用服务对应的Invoker
             createInvokerForRemote();
         }
 

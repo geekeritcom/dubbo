@@ -67,21 +67,25 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     /**
      * The interface name of the exported service
+     * 接口名称
      */
     protected String interfaceName;
 
     /**
      * The classLoader of interface belong to
+     * 接口类加载器
      */
     protected ClassLoader interfaceClassLoader;
 
     /**
      * The remote service version the customer/provider side will reference
+     * 服务版本号
      */
     protected String version;
 
     /**
      * The remote service group the customer/provider side will reference
+     * 服务分组
      */
     protected String group;
     
@@ -300,6 +304,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         if (StringUtils.hasText(interfaceName)) {
             Class<?> interfaceClass = null;
             try {
+                // 利用反射技术获取对应接口的Class
                 interfaceClass = ClassUtils.forName(interfaceName);
             } catch (ClassNotFoundException e) {
                 // There may be no interface class when generic call
@@ -312,6 +317,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
             // Auto create MethodConfig/ArgumentConfig according to config props
             Map<String, String> configProperties = subPropsConfiguration.getProperties();
             Method[] methods = interfaceClass.getMethods();
+            // 获取暴露接口中的所有方法
             for (Method method : methods) {
                 if (ConfigurationUtils.hasSubProperties(configProperties, method.getName())) {
                     MethodConfig methodConfig = getMethodByName(method.getName());

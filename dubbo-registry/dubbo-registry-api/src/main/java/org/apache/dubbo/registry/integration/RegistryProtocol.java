@@ -234,6 +234,7 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        // 调用DubboProtocol
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
@@ -558,7 +559,9 @@ public class RegistryProtocol implements Protocol, ScopeModelAware {
             directory.setRegisteredConsumerUrl(urlToRegistry);
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 封装路由链
         directory.buildRouterChain(urlToRegistry);
+        // 订阅需要请求的服务实例，便于接收注册中心的回调（服务发现）
         directory.subscribe(toSubscribeUrl(urlToRegistry));
 
         return (ClusterInvoker<T>) cluster.join(directory, true);

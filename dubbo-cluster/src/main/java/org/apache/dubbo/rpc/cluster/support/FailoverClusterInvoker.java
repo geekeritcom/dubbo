@@ -57,7 +57,9 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         List<Invoker<T>> copyInvokers = invokers;
         checkInvokers(copyInvokers, invocation);
+        // 提取RPC调用的方法信息
         String methodName = RpcUtils.getMethodName(invocation);
+        // 计算调用失败时的重试次数，默认重试3次
         int len = calculateInvokeTimes(methodName);
         // retry loop.
         RpcException le = null; // last exception.
@@ -67,7 +69,10 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
             if (i > 0) {
+                // 当调用失败时就需要检查服务实例是否已经被销毁，销毁后无须重试，直接抛出异常
                 checkWhetherDestroyed();
+                // 调用失败时很可能本地的服务实例在注册中心中已经发生了变化，
+                // 此时调用Dynamic Directory进行服务实例列表刷新
                 copyInvokers = list(invocation);
                 // check again
                 checkInvokers(copyInvokers, invocation);
@@ -100,6 +105,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 providers.add(invoker.getUrl().getAddress());
             }
         }
+        // 重试之后仍调用失败时跑次RPC调用异常
         throw new RpcException(le.getCode(), "Failed to invoke the method "
                 + methodName + " in the service " + getInterface().getName()
                 + ". Tried " + len + " times of the providers " + providers

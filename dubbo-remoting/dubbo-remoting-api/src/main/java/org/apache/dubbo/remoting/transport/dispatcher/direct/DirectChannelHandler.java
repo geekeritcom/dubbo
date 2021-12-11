@@ -36,6 +36,7 @@ public class DirectChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // 直接使用网络I/O线程处理请求
         ExecutorService executor = getPreferredExecutorService(message);
         if (executor instanceof ThreadlessExecutor) {
             try {

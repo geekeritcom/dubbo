@@ -48,6 +48,14 @@ import static org.apache.dubbo.rpc.cluster.Constants.DEFAULT_CLUSTER_STICKY;
 
 /**
  * AbstractClusterInvoker
+ *
+ * 模板方法模式
+ * Invoker的抽象父类的实现，将选择服务实例的公共逻辑提出到父类中，子类中只负责实现部分具体方法
+ * failover支持故障转移，调用失败后进行重试，适用于查询接口或者保证幂等的写接口
+ * failfast适用于本身不保证幂等的写接口，避免出现数据重复问题
+ * failsafe适用于进行日志记录等能够允许少量失败的场景，即使出现问题只需要通过异常日志排查原因即可
+ * failback调用失败时存储调用记录，根据策略进行重试
+ * Broadcast向所有服务实例进行调用，可以设置广播调用失败比例
  */
 public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
 
@@ -143,6 +151,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         }
         String methodName = invocation == null ? StringUtils.EMPTY_STRING : invocation.getMethodName();
 
+        // 从服务实例集群中获取第一个URL
         boolean sticky = invokers.get(0).getUrl()
                 .getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -157,6 +166,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
             }
         }
 
+        // 基于负载均衡算法选择一个Invoker实例
         Invoker<T> invoker = doSelect(loadbalance, invocation, invokers, selected);
 
         if (sticky) {
@@ -172,12 +182,16 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         if (CollectionUtils.isEmpty(invokers)) {
             return null;
         }
+        // 仅有一个服务实例时直接返回
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
+
+        // 通过负载均衡算法选择
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
+        // 当之前已经选择过服务实例进行调用并且本次该故障实例又被选到时，尝试进行实例重选
         if ((selected != null && selected.contains(invoker))
                 || (!invoker.isAvailable() && getUrl() != null && availablecheck)) {
             try {
@@ -223,20 +237,24 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
 
         // First, try picking a invoker not in `selected`.
         for (Invoker<T> invoker : invokers) {
+            // 剔除不可用服务实例
             if (availablecheck && !invoker.isAvailable()) {
                 continue;
             }
 
+            // 获取所有未被选择过的可用服务实例
             if (selected == null || !selected.contains(invoker)) {
                 reselectInvokers.add(invoker);
             }
         }
 
+        // 如果存在可用的服务实例直接再次进行选择即可
         if (!reselectInvokers.isEmpty()) {
             return loadbalance.select(reselectInvokers, getUrl(), invocation);
         }
 
         // Just pick an available invoker using loadbalance policy
+        // 此时已经无可用服务实例（全部服务实例都被选择过且不可用），从选择过的服务实例中找出可用的，再次重选
         if (selected != null) {
             for (Invoker<T> invoker : selected) {
                 if ((invoker.isAvailable()) // available first
@@ -263,6 +281,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
 //        }
 
         List<Invoker<T>> invokers = list(invocation);
+        // 初始化对应Invoker的负载均衡组件
         LoadBalance loadbalance = initLoadBalance(invokers, invocation);
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
         return doInvoke(invocation, invokers, loadbalance);

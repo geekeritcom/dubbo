@@ -51,6 +51,8 @@ import static org.apache.dubbo.metadata.ServiceNameMapping.getAppNames;
 
 /**
  * ZookeeperMetadataReport
+ *
+ * 使用ZK存储服务实例的元数据（接口名称，版本号，名称等信息）
  */
 public class ZookeeperMetadataReport extends AbstractMetadataReport {
 

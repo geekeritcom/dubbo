@@ -140,7 +140,9 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
         // note: url.getOrDefaultApplicationModel() may create new application model
         ApplicationModel applicationModel = url.getOrDefaultApplicationModel();
+        // ExecutorRepository用于获取对应的线程池组件
         ExecutorRepository executorRepository =
+                // 基于SPI机制获取实现类对象
                 applicationModel.getExtensionLoader(ExecutorRepository.class).getDefaultExtension();
         ExecutorService executor = executorRepository.getExecutor(url);
         if (executor == null) {

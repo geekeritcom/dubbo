@@ -95,13 +95,18 @@ public class NettyServer extends AbstractServer {
      */
     @Override
     protected void doOpen() throws Throwable {
+        // 首先创建ServerBootstrap
         bootstrap = new ServerBootstrap();
 
+        // 监听本地服务器端口号上发生的所有的网络事件（连接、通信）
+        // bossGroup负责监听指定端口号是否有其他客户端的连接请求，这里创建1个线程的线程池来处理连接请求
         bossGroup = NettyEventLoopFactory.eventLoopGroup(1, EVENT_LOOP_BOSS_POOL_NAME);
+        // 发现网络事件后交给内部线程池并发处理
         workerGroup = NettyEventLoopFactory.eventLoopGroup(
                 getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
             EVENT_LOOP_WORKER_POOL_NAME);
 
+        // 构造请求处理器
         final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
         channels = nettyServerHandler.getChannels();
 
@@ -109,7 +114,9 @@ public class NettyServer extends AbstractServer {
 
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NettyEventLoopFactory.serverSocketChannelClass())
+                 // 服务重启后端口绑定如何处理
                 .option(ChannelOption.SO_REUSEADDR, Boolean.TRUE)
+                 // 不将数据报放在一起发送，避免数据传输延迟
                 .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE)
                 .childOption(ChannelOption.SO_KEEPALIVE, keepalive)
                 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)

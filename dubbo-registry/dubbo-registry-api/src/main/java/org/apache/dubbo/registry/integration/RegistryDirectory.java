@@ -582,6 +582,7 @@ public class RegistryDirectory<T> extends DynamicDirectory<T> {
             return false;
         }
         Map<URL, Invoker<T>> localUrlInvokerMap = urlInvokerMap;
+        // 检查Invoker是否可用
         return CollectionUtils.isNotEmptyMap(localUrlInvokerMap)
                 && localUrlInvokerMap.values().stream().anyMatch(Invoker::isAvailable);
     }

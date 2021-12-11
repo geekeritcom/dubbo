@@ -39,11 +39,16 @@ public class Application {
     }
 
     private static void startWithBootstrap() {
+        // dubbo中每个Service标识分布式系统中的某个服务，每个服务可以包含多个对外暴露的接口
+        // 这里的ServiceConfig则是针对服务的配置信息
         ServiceConfig<DemoServiceImpl> service = new ServiceConfig<>();
+        // 设置服务暴露的接口
         service.setInterface(DemoService.class);
+        // 明确暴露接口对应的实现
         service.setRef(new DemoServiceImpl());
 
         DubboBootstrap bootstrap = DubboBootstrap.getInstance();
+        // 设置服务的基本信息：服务实例名称，对应的注册中心配置以及服务实例配置信息
         bootstrap.application(new ApplicationConfig("dubbo-demo-api-provider"))
             .registry(new RegistryConfig("zookeeper://127.0.0.1:2181"))
             .service(service)
@@ -56,8 +61,12 @@ public class Application {
         service.setInterface(DemoService.class);
         service.setRef(new DemoServiceImpl());
         service.setApplication(new ApplicationConfig("dubbo-demo-api-provider"));
+        // RPC框架需要与注册中心配合使用，将服务实例元信息保存到注册中心
         service.setRegistry(new RegistryConfig("zookeeper://127.0.0.1:2181"));
+        // 元数据信息上报
         service.setMetadataReportConfig(new MetadataReportConfig("zookeeper://127.0.0.1:2181"));
+        // RPCk框架配置完成后启动网络监听程序，等待其他客户端建立网络连接
+        // 基于通信协议执行RPC调用
         service.export();
 
         System.out.println("dubbo service started");

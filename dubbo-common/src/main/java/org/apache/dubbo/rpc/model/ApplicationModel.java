@@ -57,9 +57,18 @@ public class ApplicationModel extends ScopeModel {
     private final List<ModuleModel> pubModuleModels = Collections.synchronizedList(new ArrayList<>());
     private Environment environment;
     private ConfigManager configManager;
+    /**
+     * 服务数据
+     */
     private ServiceRepository serviceRepository;
+    /**
+     * 生命周期管理组件
+     */
     private ApplicationDeployer deployer;
 
+    /**
+     * 父级组件
+     */
     private final FrameworkModel frameworkModel;
 
     private ModuleModel internalModule;
@@ -196,6 +205,7 @@ public class ApplicationModel extends ScopeModel {
     }
 
     public ApplicationModel(FrameworkModel frameworkModel, boolean isInternal) {
+        // 父组件为FrameworkModel
         super(frameworkModel, ExtensionScope.APPLICATION);
         Assert.notNull(frameworkModel, "FrameworkModel can not be null");
         this.isInternal = isInternal;

@@ -48,6 +48,7 @@ public class ActiveLimitFilter implements Filter, Filter.Listener {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        // consumer端用于并发控制
         URL url = invoker.getUrl();
         String methodName = invocation.getMethodName();
         int max = invoker.getUrl().getMethodParameter(methodName, ACTIVES_KEY, 0);
@@ -56,6 +57,7 @@ public class ActiveLimitFilter implements Filter, Filter.Listener {
             long timeout = invoker.getUrl().getMethodParameter(invocation.getMethodName(), TIMEOUT_KEY, 0);
             long start = System.currentTimeMillis();
             long remain = timeout;
+            // 超出并发请求限制后在短时间内再次不断阻塞等待，查询并发请求量
             synchronized (rpcStatus) {
                 while (!RpcStatus.beginCount(url, methodName, max)) {
                     try {
@@ -66,6 +68,7 @@ public class ActiveLimitFilter implements Filter, Filter.Listener {
                     long elapsed = System.currentTimeMillis() - start;
                     remain = timeout - elapsed;
                     if (remain <= 0) {
+                        // 超出一定等待时间后并发量仍超出限制时抛出异常
                         throw new RpcException(RpcException.LIMIT_EXCEEDED_EXCEPTION,
                                 "Waiting concurrent invoke timeout in client-side for service:  " +
                                         invoker.getInterface().getName() + ", method: " + invocation.getMethodName() +

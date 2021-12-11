@@ -90,6 +90,7 @@ public class InstantiationStrategy {
         for (int i = 0; i < parameterTypes.length; i++) {
             args[i] = getArgumentValueForType(parameterTypes[i]);
         }
+        // 利用反射通过构造函数来创建目标类的实例
         return (T) targetConstructor.newInstance(args);
     }
 

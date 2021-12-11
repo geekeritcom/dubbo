@@ -77,6 +77,8 @@ public class InvokerInvocationHandler implements InvocationHandler {
         } else if (parameterTypes.length == 1 && "equals".equals(methodName)) {
             return invoker.equals(args[0]);
         }
+        // 动态代理底层封装InvocationHandler来拦截处理所有对于代理对象方法的调用
+        // 这里将对目标服务实例的调用请求封装为RPC框架内部的调用请求对象
         RpcInvocation rpcInvocation = new RpcInvocation(serviceModel, method, invoker.getInterface().getName(), protocolServiceKey, args);
         String serviceKey = url.getServiceKey();
         rpcInvocation.setTargetServiceUniqueName(serviceKey);

@@ -30,6 +30,9 @@ import java.util.stream.Stream;
  * @serial Don't change the class name and package name.
  * @see org.apache.dubbo.rpc.Invoker#invoke(Invocation)
  * @see org.apache.dubbo.rpc.RpcInvocation
+ *
+ * 当NettyServer接收到请求之后，通过解析请求能够知道调用方具体的调用信息
+ * 此时就会将调用信息封装到对应的Invocation实例当中
  */
 public interface Invocation {
 
