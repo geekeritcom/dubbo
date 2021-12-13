@@ -56,6 +56,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         List<Invoker<T>> copyInvokers = invokers;
+        // 当经过过滤之后没有可用服务实例调用时会直接抛出RPC异常
         checkInvokers(copyInvokers, invocation);
         // 提取RPC调用的方法信息
         String methodName = RpcUtils.getMethodName(invocation);
@@ -68,6 +69,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
         for (int i = 0; i < len; i++) {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
+            // 进入该分支说明首次调用失败
             if (i > 0) {
                 // 当调用失败时就需要检查服务实例是否已经被销毁，销毁后无须重试，直接抛出异常
                 checkWhetherDestroyed();
@@ -105,7 +107,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 providers.add(invoker.getUrl().getAddress());
             }
         }
-        // 重试之后仍调用失败时跑次RPC调用异常
+        // 达到重试次数上限之后抛出RPC调用异常
         throw new RpcException(le.getCode(), "Failed to invoke the method "
                 + methodName + " in the service " + getInterface().getName()
                 + ". Tried " + len + " times of the providers " + providers

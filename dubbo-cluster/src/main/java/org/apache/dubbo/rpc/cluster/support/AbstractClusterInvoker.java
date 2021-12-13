@@ -151,7 +151,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         }
         String methodName = invocation == null ? StringUtils.EMPTY_STRING : invocation.getMethodName();
 
-        // 从服务实例集群中获取第一个URL
+        // 确认是否启用粘性策略
         boolean sticky = invokers.get(0).getUrl()
                 .getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -170,6 +170,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         Invoker<T> invoker = doSelect(loadbalance, invocation, invokers, selected);
 
         if (sticky) {
+            // 记录本次选择的Invoker便于后续调用时使用
             stickyInvoker = invoker;
         }
 
@@ -191,7 +192,9 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
         Invoker<T> invoker = loadbalance.select(invokers, getUrl(), invocation);
 
         //If the `invoker` is in the  `selected` or invoker is unavailable && availablecheck is true, reselect.
-        // 当之前已经选择过服务实例进行调用并且本次该故障实例又被选到时，尝试进行实例重选
+        // 这里说明的什么情况下需要进行服务实例重选
+        // 1.当服务实例已经被调用过时，说明本次调用属于重试调用，应该选择其他的服务实例；
+        // 2.当明确要求进行服务实例可用性检查且当前选择的服务实例不可用时
         if ((selected != null && selected.contains(invoker))
                 || (!invoker.isAvailable() && getUrl() != null && availablecheck)) {
             try {
@@ -236,6 +239,7 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
                 invokers.size() > 1 ? (invokers.size() - 1) : invokers.size());
 
         // First, try picking a invoker not in `selected`.
+        // 首先排除所有不可用以及已选择过的服务实例
         for (Invoker<T> invoker : invokers) {
             // 剔除不可用服务实例
             if (availablecheck && !invoker.isAvailable()) {
@@ -248,13 +252,14 @@ public abstract class AbstractClusterInvoker<T> implements ClusterInvoker<T> {
             }
         }
 
-        // 如果存在可用的服务实例直接再次进行选择即可
+        // 如果处理过后存在可用的服务实例列表直接再次基于负载均衡策略选择即可
         if (!reselectInvokers.isEmpty()) {
             return loadbalance.select(reselectInvokers, getUrl(), invocation);
         }
 
         // Just pick an available invoker using loadbalance policy
-        // 此时已经无可用服务实例（全部服务实例都被选择过且不可用），从选择过的服务实例中找出可用的，再次重选
+        // 此时已经无可用服务实例（全部服务实例都被选择过），
+        // 从选择过的服务实例中找出可用的，再次重选
         if (selected != null) {
             for (Invoker<T> invoker : selected) {
                 if ((invoker.isAvailable()) // available first

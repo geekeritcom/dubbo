@@ -100,6 +100,9 @@ public class ExtensionLoader<T> {
 
     private static final Pattern NAME_SEPARATOR = Pattern.compile("\\s*[,]+\\s*");
 
+    /**
+     * 缓存具体扩展类以及对应的实现类实例
+     */
     private final ConcurrentMap<Class<?>, Object> extensionInstances = new ConcurrentHashMap<>(64);
 
     private final Class<?> type;
@@ -669,7 +672,8 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
-        // 针对@Adptive注解的SPI扩展机制，当接口包含多个实现类的时候，可以根据url中的参数来定位对应的实现类
+        // 注意这里生成的并不是某个具体的SPI机制的扩展实现，而是能够实现基于请求url中的参数来定位对应的实现类的一个处理类
+        // 针对@Adptive注解的SPI扩展机制处理类实例
         Object instance = cachedAdaptiveInstance.get();
         if (instance == null) {
             if (createAdaptiveInstanceError != null) {
@@ -683,6 +687,7 @@ public class ExtensionLoader<T> {
                 if (instance == null) {
                     try {
                         instance = createAdaptiveExtension();
+                        // 缓存自适应实例处理类
                         cachedAdaptiveInstance.set(instance);
                     } catch (Throwable t) {
                         createAdaptiveInstanceError = t;
@@ -721,13 +726,13 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name, boolean wrap) {
-        // 根据接口名称从已加载的实现类中获取具体的实现类
+        // 根据接口名称从已加载的实现类中获取某个具体的实现类
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null || unacceptableExceptions.contains(name)) {
             throw findException(name);
         }
         try {
-            //
+            // 尝试获取缓存对象实例
             T instance = (T) extensionInstances.get(clazz);
             if (instance == null) {
                 // 构造实现类的对象进行缓存
@@ -891,6 +896,7 @@ public class ExtensionLoader<T> {
             synchronized (cachedClasses) {
                 classes = cachedClasses.get();
                 if (classes == null) {
+                    // 加载所有的扩展类
                     classes = loadExtensionClasses();
                     cachedClasses.set(classes);
                 }
@@ -958,6 +964,7 @@ public class ExtensionLoader<T> {
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type,
                                boolean extensionLoaderClassLoaderFirst, boolean overridden,
                                String[] excludedPackages, String[] onlyExtensionClassLoaderPackages) {
+        // 对应目录+接口名称（Dubbo SPI的规则）
         String fileName = dir + type;
         try {
             List<ClassLoader> classLoadersToLoad = new LinkedList<>();
@@ -1005,7 +1012,7 @@ public class ExtensionLoader<T> {
 
     /**
      * 基于配置文件直接进行IO读取，加载指定的extension class
-     * 并且处理@Adaptive等注解
+     * 并且处理或者缓存@Adaptive等注解
      *
      * @param extensionClasses
      * @param classLoader
@@ -1207,6 +1214,7 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // 如何获取自适应的SPI实现类
             T instance = (T) getAdaptiveExtensionClass().newInstance();
             instance = postProcessBeforeInitialization(instance, null);
             instance = injectExtension(instance);
@@ -1236,9 +1244,11 @@ public class ExtensionLoader<T> {
         } catch (Throwable ignore) {
 
         }
+        // 类代码生成
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
         org.apache.dubbo.common.compiler.Compiler compiler = extensionDirector.getExtensionLoader(
             org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
+        // 编译生成的动态代码
         return compiler.compile(code, classLoader);
     }
 
